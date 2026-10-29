@@ -1,6 +1,14 @@
 # email-agent-send-gate
 
-<!-- Opening paragraph for v0.1.0 goes here. -->
+An AI agent can now research companies, find a real reason to write to each one and draft a
+first email worth reading. It can also, in an afternoon, email hundreds of strangers, ignore an
+opt-out and get your domain blocked. This repo is the part that stops the second thing: a send
+gate that is the only service holding your email provider's credentials, with one-click
+unsubscribe, a suppression list nothing can bypass, low caps, a human review queue and dry run
+on by default. The agent around it (Claude with a few narrow tools) is a working example of how
+to use the gate; bring your own brief, signals and data. Built and maintained by
+[Postbox Services](https://postboxservices.com/). The full walkthrough is on our blog:
+[How to Build an AI Prospecting Email Agent That Finds Leads and Emails Them Safely](https://postboxservices.com/blogs/post/build-ai-prospecting-email-agent/).
 
 A send gate for AI email agents: **the agent drafts, the gate decides.** The agent can ask
 the gate to send a message; only the gate holds the email provider's credentials, and every
