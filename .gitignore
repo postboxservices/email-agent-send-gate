@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# local state and secrets
+*.db
+*.db-shm
+*.db-wal
+outbox/
+data/
+env/*.env
+!env/*.env.example
+.env
+
+# your own brief (copy brief.example.md)
+/brief.md

@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install ".[ses,claude,mailtester,dev]"
+      - run: ruff check .
+      - run: pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Env files from the examples
+        run: |
+          for f in env/*.env.example; do cp "$f" "${f%.example}"; done
+          cp brief.example.md brief.md
+          echo "UNSUBSCRIBE_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')" >> env/gate.env
+          echo "GATE_API_TOKEN=ci-token" >> env/provider.env
+      - run: docker compose build
+      - run: docker compose up -d gate gate-public && docker compose ps
+      - name: Both services answer, and the gate starts in dry run
+        run: |
+          curl -fsS --retry 20 --retry-all-errors --retry-delay 2 http://127.0.0.1:8000/health | tee health.json
+          curl -fsS --retry 20 --retry-all-errors --retry-delay 2 http://127.0.0.1:8001/health
+          grep -q '"live_sending":false' health.json
+          docker compose run --rm gate status
+          docker compose run --rm --no-deps agent runs
+      - name: Provider credentials reach only the internal gate
+        run: |
+          ! docker compose exec -T gate-public env | grep -E '^(SMTP_|AWS_|SES_|GATE_REVIEW_PASSWORD)'
+          docker compose exec -T gate env | grep -q '^SMTP_HOST='
+      - if: always()
+        run: docker compose logs && docker compose down -v

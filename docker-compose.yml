@@ -1,0 +1,56 @@
+# Each service gets only the env files it needs.
+#
+#   gate         internal API + review page. The ONLY service with env/provider.env.
+#   gate-public  internet-facing: one-click unsubscribe and inbound webhooks (bounces,
+#                complaints, replies). No provider credentials. Gets env/classifier.env
+#                only if you turn on the optional Claude reply classifier.
+#   agent        the prospecting agent (`agent watch`). Talks to `gate` over the agent
+#                network with GATE_API_TOKEN; never receives env/gate.env or env/provider.env.
+#
+# Copy each env/*.env.example to env/*.env and fill it in. DRY_RUN stays true until
+# `docker compose run --rm gate selftest` passes.
+
+services:
+  gate:
+    build: .
+    command: ["serve", "internal", "--port", "8000"]
+    env_file: [env/gate.env, env/provider.env]
+    volumes: [gate-data:/data]
+    networks: [default, agent-net]
+    ports: ["127.0.0.1:8000:8000"]  # review page: this machine only (use an SSH tunnel)
+    restart: unless-stopped
+
+  gate-public:
+    build: .
+    command: ["serve", "public", "--port", "8001"]
+    env_file:
+      - env/gate.env
+      - path: env/classifier.env
+        required: false
+    volumes: [gate-data:/data]
+    networks: [default]
+    ports: ["127.0.0.1:8001:8001"]  # put your HTTPS reverse proxy in front of /u/ and /inbound/
+    depends_on: [gate]
+    restart: unless-stopped
+
+  agent:
+    build: .
+    entrypoint: ["agent"]
+    command: ["watch"]
+    env_file: [env/agent.env]
+    environment:
+      AGENT_DB_PATH: /data/agent.db
+      AGENT_BRIEF_PATH: /config/brief.md
+    volumes:
+      - agent-data:/data
+      - ./brief.md:/config/brief.md:ro
+    networks: [default, agent-net]
+    depends_on: [gate]
+    restart: unless-stopped
+
+networks:
+  agent-net: {}
+
+volumes:
+  gate-data: {}
+  agent-data: {}
